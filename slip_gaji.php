@@ -16,29 +16,8 @@ if ($gaji_id <= 0) {
     exit;
 }
 
-// Fungsi bantu format tanggal Indonesia yang sudah diperbaiki
-function formatIndoTanggal($tanggal) {
-    if (!$tanggal) return '';
-    $bulanIndo = [
-        '01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April',
-        '05' => 'Mei', '06' => 'Juni', '07' => 'Juli', '08' => 'Agustus',
-        '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
-    ];
-    $pecah = explode('-', $tanggal);
-    if (count($pecah) === 3) {
-        return $pecah[2] . ' ' . ($bulanIndo[$pecah[1]] ?? $pecah) . ' ' . $pecah[0];
-    }
-    return $tanggal;
-}
-
 // ==============================
-// AMBIL PERIODE AKTIF YANG SEDANG BERLAKU
-// ==============================
-$q_aktif = mysqli_query($koneksi, "SELECT tanggal_mulai, tanggal_selesai FROM periode_gaji WHERE is_active = 1 LIMIT 1");
-$periode_aktif = mysqli_fetch_assoc($q_aktif);
-
-// ==============================
-// AMBIL DATA GAJI + KARYAWAN BERDASARKAN ID GAJI YANG DIPILIH DARI TABEL DATA GAJI
+// AMBIL DATA GAJI + KARYAWAN
 // ==============================
 $stmt = mysqli_prepare($koneksi, "
     SELECT gaji.*, karyawan.nama, karyawan.nik, karyawan.jabatan, karyawan.no_wa, karyawan.email
@@ -55,11 +34,7 @@ if (!$data) {
     exit;
 }
 
-if ($periode_aktif) {
-    $teks_periode = formatIndoTanggal($periode_aktif['tanggal_mulai']) . ' - ' . formatIndoTanggal($periode_aktif['tanggal_selesai']);
-} else {
-    $teks_periode = $data['periode'] ?? '';
-}
+$teks_periode = teksPeriodeGajian($data['tanggal_gajian']);
 
 // ==============================
 // PERHITUNGAN GAJI
@@ -73,7 +48,7 @@ $total_potongan    = $pinjaman_karyawan;
 $gaji_bersih       = $total_penghasilan - $total_potongan;
 
 // ==============================
-// SIAPKAN PESAN WHATSAPP
+// SIAPKAN PESAN WHATSAPP & EMAIL
 // ==============================
 $pesan_wa = "SLIP GAJI KARYAWAN\n\n"
           . "Nama: " . $data['nama'] . "\n"
@@ -89,9 +64,6 @@ $pesan_wa = "SLIP GAJI KARYAWAN\n\n"
 
 $no_wa_default = htmlspecialchars($data['no_wa'] ?? '');
 
-// ==============================
-// SIAPKAN ISI EMAIL (Simpel, Rapi, & Profesional)
-// ==============================
 $subjek_email = 'Slip Gaji Periode ' . $teks_periode . ' - ' . $data['nama'];
 $isi_email    = "Halo " . $data['nama'] . ",\n\n"
               . "Berikut adalah rincian slip gaji Anda untuk periode " . $teks_periode . ":\n\n"
@@ -104,7 +76,7 @@ $isi_email    = "Halo " . $data['nama'] . ",\n\n"
               . "Salam,\n"
               . "Manajemen";
 
-$email_default = htmlspecialchars($data['email'] ?? '');
+$email_default   = htmlspecialchars($data['email'] ?? '');
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -112,17 +84,132 @@ $email_default = htmlspecialchars($data['email'] ?? '');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Slip Gaji - <?= htmlspecialchars($data['nama']) ?></title>
-    <link rel="stylesheet" href="assets/style.css?v=2"/>
+    <link rel="stylesheet" href="assets/style.css?v=3"/>
+    <!-- FontAwesome untuk ikon tombol -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Panel aksi dibuat nempel tepat di atas kotak slip */
+        .panel-aksi-atas {
+            max-width: 750px;
+            margin: 10px auto 2px auto; /* Jarak atas kecil, jarak bawah sangat dekat dengan slip */
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 5px;
+            box-sizing: border-box;
+        }
+        .kelompok-ikon {
+            display: flex;
+            gap: 10px;
+        }
+        .btn-ikon {
+            background: #ffffff;
+            border: 1px solid #ced4da;
+            color: #333;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            font-size: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        }
+        .btn-ikon:hover {
+            background: #195b8c;
+            color: #fff;
+            border-color: #195b8c;
+        }
+        .btn-ikon.wa:hover { background: #25d366; border-color: #25d366; }
+        .btn-ikon.email:hover { background: #ea4335; border-color: #ea4335; }
+        .btn-ikon.pdf:hover { background: #dc3545; border-color: #dc3545; }
+
+        .form-drawer {
+            max-width: 750px;
+            margin: 0 auto 5px auto;
+            background: #fff;
+            padding: 12px 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            box-sizing: border-box;
+            display: none;
+            border-radius: 4px;
+        }
+        .btn-kembali-teks {
+            color: #333; 
+            text-decoration: none; 
+            font-size: 14px; 
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-kembali-teks:hover {
+            color: #195b8c;
+        }
+        /* Mengurangi margin atas slip-container agar langsung merapat ke atas */
+        .slip-container {
+            margin-top: 5px !important;
+        }
+    </style>
 </head>
 <body>
 
     <!-- ===================================================== -->
-    <!-- BAGIAN AREA CETAK (Tercetak / PDF) -->
+    <!-- BAGIAN AKSI ADMIN DI ATAS (MENEMPEL KE FORMULIR) -->
+    <!-- ===================================================== -->
+    <div class="panel-aksi-atas no-print">
+        <a href="data_gaji.php" class="btn-kembali-teks">
+            <i class="fa fa-arrow-left"></i> Kembali
+        </a>
+
+        <div class="kelompok-ikon">
+            <!-- Tombol WhatsApp -->
+            <button type="button" class="btn-ikon wa" title="Kirim / Bagikan via WhatsApp" onclick="bukaFormWhatsapp()">
+                <i class="fab fa-whatsapp"></i>
+            </button>
+
+            <!-- Tombol Email -->
+            <button type="button" class="btn-ikon email" title="Kirim via Email" onclick="bukaFormEmail()">
+                <i class="fa fa-envelope"></i>
+            </button>
+
+            <!-- Tombol PDF / Cetak -->
+            <button type="button" class="btn-ikon pdf" title="Cetak / Download PDF" onclick="window.print()">
+                <i class="fa fa-file-pdf"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Form Input Nomor WhatsApp Tersembunyi -->
+    <div id="form-whatsapp-container" class="form-drawer no-print">
+        <label style="font-size: 13px; font-weight: bold; display: block; margin-bottom: 5px;">Nomor WhatsApp Tujuan:</label>
+        <div style="display: flex; gap: 8px;">
+            <input type="text" id="no_wa_input" class="kotak" value="<?= $no_wa_default ?>" placeholder="Contoh: 081234567890" onkeypress="cekEnterWhatsapp(event)" style="padding: 6px 10px; border: 1px solid #ccc; flex: 1;">
+            <button type="button" onclick="kirimWhatsapp()" style="padding: 0 15px; cursor: pointer; background: #25d366; color: white; border: none; border-radius: 3px; font-weight: bold;">Kirim</button>
+        </div>
+        <small style="color: #666; display: block; margin-top: 5px;">Tekan <b>Enter</b> untuk langsung mengirim pesan WhatsApp.</small>
+    </div>
+
+    <!-- Form Input Email Tersembunyi -->
+    <div id="form-email-container" class="form-drawer no-print">
+        <label style="font-size: 13px; font-weight: bold; display: block; margin-bottom: 5px;">Email Tujuan:</label>
+        <div style="display: flex; gap: 8px;">
+            <input type="email" id="email_input" class="kotak" value="<?= $email_default ?>" placeholder="Contoh: karyawan@email.com" onkeypress="cekEnterEmail(event)" style="padding: 6px 10px; border: 1px solid #ccc; flex: 1;">
+            <button type="button" onclick="kirimEmail()" style="padding: 0 15px; cursor: pointer; background: #ea4335; color: white; border: none; border-radius: 3px; font-weight: bold;">Kirim</button>
+        </div>
+        <small style="color: #666; display: block; margin-top: 5px;">Tekan <b>Enter</b> untuk memproses email.</small>
+    </div>
+
+    <!-- ===================================================== -->
+    <!-- BAGIAN AREA CETAK / SLIP GAJI -->
     <!-- ===================================================== -->
     <div class="slip-container" id="area-cetak">
-       
+
         <h2 class="slip-title">SLIP GAJI KARYAWAN</h2>
-        <p class="slip-periode">Periode <?= htmlspecialchars($teks_periode) ?></p>
+        <p class="slip-periode">Periode: <?= htmlspecialchars($teks_periode) ?></p>
 
         <div class="field-baca">
             <label>Nama:</label>
@@ -173,73 +260,36 @@ $email_default = htmlspecialchars($data['email'] ?? '');
             <label>Gaji bersih:</label>
             <div class="kotak"><strong><?= rupiah($gaji_bersih) ?></strong></div>
         </div>
+
+        <p class="slip-footer-cetak">Dicetak dari Aplikasi Penggajian</p>
     </div>
     <!-- ===================== akhir area-cetak ===================== -->
-
-    <!-- BAGIAN AKSI ADMIN (TIDAK IKUT TERCETAK) -->
-    <div class="slip-container slip-aksi no-print">
-
-        <div class="bagikan-wrap">
-            <button type="button" class="btn-bagikan" onclick="toggleBagikan()">Bagikan &#9662;</button>
-            <div class="bagikan-menu" id="bagikan-menu">
-                <a href="#" onclick="bukaFormWhatsapp(); return false;">WhatsApp</a>
-                <a href="#" onclick="window.print(); return false;">Cetak</a>
-                <a href="#" onclick="window.print(); return false;">Download PDF</a>
-                <a href="#" onclick="bukaFormEmail(); return false;">Email</a>
-            </div>
-        </div>
-
-        <!-- Form Input Nomor WhatsApp Tujuan -->
-        <div id="form-whatsapp-container" class="field-baca" style="margin-top:15px; display:none;">
-            <label>Nomor WhatsApp tujuan (Bisa diedit):</label>
-            <div style="display: flex; gap: 8px;">
-                <input type="text" id="no_wa_input" class="kotak" value="<?= $no_wa_default ?>" placeholder="Contoh: 081234567890" onkeypress="cekEnterWhatsapp(event)">
-                <button type="button" onclick="kirimWhatsapp()" style="padding: 0 15px; cursor: pointer;">Kirim</button>
-            </div>
-            <small style="color: #666; display: block; margin-top: 4px;">Tekan <b>Enter</b> pada keyboard untuk langsung mengirim.</small>
-        </div>
-
-        <!-- Form Input Email Tujuan -->
-        <div id="form-email-container" class="field-baca" style="margin-top:15px; display:none;">
-            <label>Email tujuan (Bisa diedit):</label>
-            <div style="display: flex; gap: 8px;">
-                <input type="email" id="email_input" class="kotak" value="<?= $email_default ?>" placeholder="Contoh: karyawan@email.com" onkeypress="cekEnterEmail(event)">
-                <button type="button" onclick="kirimEmail()" style="padding: 0 15px; cursor: pointer;">Kirim</button>
-            </div>
-            <small style="color: #666; display: block; margin-top: 4px;">Tekan <b>Enter</b> pada keyboard untuk langsung memproses.</small>
-        </div>
-
-        <a href="data_gaji.php" class="btn-kembali" style="display: block; margin-top: 15px;">&larr; Kembali ke Data Gaji</a>
-    </div>
 
     <script>
         const pesanWA = <?= json_encode($pesan_wa) ?>;
         const subjekEmail = <?= json_encode($subjek_email) ?>;
         const isiEmail = <?= json_encode($isi_email) ?>;
 
-        function toggleBagikan() {
-            document.getElementById('bagikan-menu').classList.toggle('tampil');
-        }
-
-        document.addEventListener('click', function (e) {
-            const wrap = document.querySelector('.bagikan-wrap');
-            if (wrap && !wrap.contains(e.target)) {
-                document.getElementById('bagikan-menu').classList.remove('tampil');
-            }
-        });
-
         function bukaFormWhatsapp() {
-            document.getElementById('bagikan-menu').classList.remove('tampil');
-            document.getElementById('form-email-container').style.display = 'none';
-            document.getElementById('form-whatsapp-container').style.display = 'block';
-            document.getElementById('no_wa_input').focus();
+            const formWa = document.getElementById('form-whatsapp-container');
+            const formEmail = document.getElementById('form-email-container');
+            
+            formEmail.style.display = 'none';
+            formWa.style.display = formWa.style.display === 'block' ? 'none' : 'block';
+            if(formWa.style.display === 'block') {
+                document.getElementById('no_wa_input').focus();
+            }
         }
 
         function bukaFormEmail() {
-            document.getElementById('bagikan-menu').classList.remove('tampil');
-            document.getElementById('form-whatsapp-container').style.display = 'none';
-            document.getElementById('form-email-container').style.display = 'block';
-            document.getElementById('email_input').focus();
+            const formWa = document.getElementById('form-whatsapp-container');
+            const formEmail = document.getElementById('form-email-container');
+            
+            formWa.style.display = 'none';
+            formEmail.style.display = formEmail.style.display === 'block' ? 'none' : 'block';
+            if(formEmail.style.display === 'block') {
+                document.getElementById('email_input').focus();
+            }
         }
 
         function cekEnterWhatsapp(event) {
@@ -279,9 +329,9 @@ $email_default = htmlspecialchars($data['email'] ?? '');
                 return;
             }
 
-            const gmailUrl = 'https://mail.google.com/mail/?view=cm&fs=1&to=' 
-                        + encodeURIComponent(emailTujuan) 
-                        + '&su=' + encodeURIComponent(subjekEmail) 
+            const gmailUrl = 'https://mail.google.com/mail/?view=cm&fs=1&to='
+                        + encodeURIComponent(emailTujuan)
+                        + '&su=' + encodeURIComponent(subjekEmail)
                         + '&body=' + encodeURIComponent(isiEmail);
 
             window.open(gmailUrl, '_blank');

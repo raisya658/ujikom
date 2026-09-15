@@ -154,6 +154,15 @@ form {
     margin-top: 20px;
 }
 
+.slip-footer-cetak {
+    display: none; /* tersembunyi di layar, hanya muncul saat cetak/gambar */
+    text-align: center;
+    font-size: 11px;
+    color: #999;
+    margin-top: 24px;
+    margin-bottom: 0;
+}
+
 .captcha-box {
     display: flex;
     align-items: center;
@@ -274,23 +283,31 @@ form {
    ============================ */
 /* ============================
    MODE CETAK (DIPERBAIKI)
+   Supaya hasil cetak/PDF pas satu halaman & rapi -- ukurannya konsisten
+   dengan gambar yang dihasilkan tombol "Unduh Gambar Slip" (media share).
    ============================ */
+@page {
+    size: A5 portrait;
+    margin: 10mm;
+}
+
 @media print {
     /* Sembunyikan semua elemen aksi admin & tombol */
-    .no-print, 
-    .slip-aksi, 
-    .bagikan-wrap, 
-    #form-whatsapp-container, 
-    #form-email-container, 
+    .no-print,
+    .slip-aksi,
+    .bagikan-wrap,
+    #form-whatsapp-container,
+    #form-email-container,
     .btn-kembali {
         display: none !important;
     }
 
     /* Hilangkan background luar halaman */
-    body {
+    html, body {
         background-color: white !important;
         margin: 0 !important;
         padding: 0 !important;
+        height: auto !important;
     }
 
     /* Paksa browser agar mencetak warna background dan warna teks secara akurat */
@@ -300,17 +317,17 @@ form {
         color-adjust: exact !important;
     }
 
-    /* Fokuskan hanya pada area cetak slip gaji */
+    /* Fokuskan hanya pada area cetak slip gaji, dipaksa muat dalam satu halaman */
     #area-cetak {
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
+        position: static !important;
         width: 100% !important;
         max-width: 100% !important;
         box-shadow: none !important;
-        margin: 0 !important;
-        padding: 20px !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
         border: none !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
     }
 
     /* Pastikan warna latar belakang judul kolom (Penghasilan & Potongan) tetap biru */
@@ -322,6 +339,11 @@ form {
     /* Pastikan warna teks potongan tetap merah menyala */
     .potongan-merah {
         color: #c0392b !important;
+    }
+
+    /* Tampilkan footer kecil hanya saat dicetak/dijadikan PDF */
+    .slip-footer-cetak {
+        display: block !important;
     }
 }
 

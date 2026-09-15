@@ -8,31 +8,21 @@ if (!isset($_SESSION['user_email'])) {
     exit;
 }
 
-// Fungsi bantu format tanggal Indonesia
-function formatIndoTanggal($tanggal) {
-    if (!$tanggal) return '';
-    $bulanIndo = [
-        '01' => 'Januari', '02' => 'Februari', '03' => 'Maret', '04' => 'April',
-        '05' => 'Mei', '06' => 'Juni', '07' => 'Juli', '08' => 'Agustus',
-        '09' => 'September', '10' => 'Oktober', '11' => 'November', '12' => 'Desember'
-    ];
-    $pecah = explode('-', $tanggal);
-    if (count($pecah) === 3) {
-        return $pecah[2] . ' ' . ($bulanIndo[$pecah[1]] ?? $pecah[1]) . ' ' . $pecah[0];
-    }
-    return $tanggal;
+// ==============================
+// TENTUKAN PERIODE GAJI (dari popup "Pilih Periode" di halaman Data Gaji)
+// Admin hanya memilih bulan & tahun; tanggalnya otomatis 25 -> 25,
+// contoh: 25 November - 25 Desember 2026.
+// ==============================
+$bulan_input = $_POST['bulan'] ?? $_GET['bulan'] ?? '';
+if (!preg_match('/^\d{4}-\d{2}$/', $bulan_input)) {
+    // Formulir TIDAK boleh dibuka sebelum periode diisi.
+    // Lempar balik ke Data Gaji, popup "Pilih Periode" langsung terbuka di sana.
+    header('Location: data_gaji.php?pilih=1');
+    exit;
 }
-
-// Ambil periode yang sedang aktif
-$q_aktif = mysqli_query($koneksi, "SELECT id, tanggal_mulai, tanggal_selesai FROM periode_gaji WHERE is_active = 1 LIMIT 1");
-$periode_aktif = mysqli_fetch_assoc($q_aktif);
-
-$teks_periode_aktif = 'Belum ada periode aktif';
-$active_periode_id = null;
-if ($periode_aktif) {
-    $active_periode_id = $periode_aktif['id'];
-    $teks_periode_aktif = formatIndoTanggal($periode_aktif['tanggal_mulai']) . ' - ' . formatIndoTanggal($periode_aktif['tanggal_selesai']);
-}
+$periode             = periodeGajianDariBulan($bulan_input);
+$tanggal_gajian      = $periode['mulai'];   // tersimpan di DB sebagai awal periode (tanggal 25)
+$teks_periode_aktif  = teksPeriodeGajian($tanggal_gajian);
 
 // CAPTCHA
 if (!isset($_SESSION['captcha_num1'])) {
@@ -55,46 +45,95 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $form['nama']              = trim($_POST['nama'] ?? '');
     $form['nik']               = trim($_POST['nik'] ?? '');
     $form['jabatan']           = trim($_POST['jabatan'] ?? '');
-    $form['gaji_pokok']        = (float) ($_POST['gaji_pokok'] ?? 0);
-    $form['lembur']            = (float) ($_POST['lembur'] ?? 0);
-    $form['pinjaman_karyawan'] = (float) ($_POST['pinjaman_karyawan'] ?? 0);
+    // input dari user sudah pakai titik ribuan (mis. "2.000.000"), jadi
+    // dibersihkan dulu semua karakter selain angka sebelum diubah ke angka.
+    $form['gaji_pokok']        = (float) preg_replace('/\D/', '', $_POST['gaji_pokok'] ?? '0');
+    $form['lembur']            = (float) preg_replace('/\D/', '', $_POST['lembur'] ?? '0');
+    $form['pinjaman_karyawan'] = (float) preg_replace('/\D/', '', $_POST['pinjaman_karyawan'] ?? '0');
 
     $jawaban_benar = $_SESSION['captcha_num1'] * $_SESSION['captcha_num2'];
     $jawaban_user  = isset($_POST['captcha_jawaban']) ? (int) $_POST['captcha_jawaban'] : null;
 
-    if (!$active_periode_id) {
-        $error = 'Belum ada Periode Penggajian yang aktif. Silakan buat atau aktifkan periode di halaman Data Gaji terlebih dahulu.';
-    } elseif ($form['nama'] === '') {
+    if ($form['nama'] === '') {
         $error = 'Nama karyawan wajib diisi.';
     } elseif ($jawaban_user !== $jawaban_benar) {
         $error = 'Jawaban captcha salah. Silakan coba lagi.';
     } else {
         mysqli_begin_transaction($koneksi);
         try {
-            // 1. Masukkan data ke tabel KARYAWAN terlebih dahulu
-            $stmt_kar = mysqli_prepare($koneksi, 
-                "INSERT INTO karyawan (nama, nik, jabatan) VALUES (?, ?, ?)"
-            );
-            mysqli_stmt_bind_param($stmt_kar, 'sss', $form['nama'], $form['nik'], $form['jabatan']);
-            mysqli_stmt_execute($stmt_kar);
-            $karyawan_id = mysqli_insert_id($koneksi);
+            // ---------------------------------------------------------
+            // CARI DULU APAKAH KARYAWAN INI SUDAH ADA (berdasarkan NIK,
+            // atau kalau NIK kosong berdasarkan nama persis sama).
+            // Ini memperbaiki bug lama: dulu SELALU insert karyawan baru
+            // setiap kali "Tambah Data Gaji" -> karena kolom email di
+            // tabel karyawan bersifat UNIK, baris ke-2 dst dengan email
+            // kosong gagal disimpan (bentrok unik) dan data gaji jadi
+            // ikut tidak pernah tersimpan / tidak muncul di Data Gaji.
+            // ---------------------------------------------------------
+            $karyawan_id = null;
 
-            // 2. Masukkan data gaji dengan menghubungkan `karyawan_id`
+            if ($form['nik'] !== '') {
+                $cek = mysqli_prepare($koneksi, "SELECT id FROM karyawan WHERE nik = ? LIMIT 1");
+                mysqli_stmt_bind_param($cek, 's', $form['nik']);
+                mysqli_stmt_execute($cek);
+                $row_cek = mysqli_fetch_assoc(mysqli_stmt_get_result($cek));
+                if ($row_cek) {
+                    $karyawan_id = (int) $row_cek['id'];
+                }
+            }
+
+            if ($karyawan_id === null) {
+                $cek = mysqli_prepare($koneksi, "SELECT id FROM karyawan WHERE nama = ? LIMIT 1");
+                mysqli_stmt_bind_param($cek, 's', $form['nama']);
+                mysqli_stmt_execute($cek);
+                $row_cek = mysqli_fetch_assoc(mysqli_stmt_get_result($cek));
+                if ($row_cek) {
+                    $karyawan_id = (int) $row_cek['id'];
+                }
+            }
+
+            if ($karyawan_id !== null) {
+                // Karyawan sudah ada -> update data identitasnya saja (jangan duplikat)
+                $stmt_up = mysqli_prepare($koneksi,
+                    "UPDATE karyawan SET nama = ?, nik = ?, jabatan = ? WHERE id = ?"
+                );
+                mysqli_stmt_bind_param($stmt_up, 'sssi', $form['nama'], $form['nik'], $form['jabatan'], $karyawan_id);
+                if (!mysqli_stmt_execute($stmt_up)) {
+                    throw new Exception(mysqli_stmt_error($stmt_up));
+                }
+            } else {
+                // Karyawan baru -> insert. Email diisi placeholder unik (bukan string
+                // kosong) supaya tidak melanggar UNIQUE KEY email di tabel karyawan.
+                $email_placeholder = 'karyawan_' . uniqid() . '@slipgaji.local';
+                $stmt_kar = mysqli_prepare($koneksi,
+                    "INSERT INTO karyawan (nama, nik, email, password, jabatan) VALUES (?, ?, ?, '', ?)"
+                );
+                mysqli_stmt_bind_param($stmt_kar, 'ssss', $form['nama'], $form['nik'], $email_placeholder, $form['jabatan']);
+                if (!mysqli_stmt_execute($stmt_kar)) {
+                    throw new Exception(mysqli_stmt_error($stmt_kar));
+                }
+                $karyawan_id = mysqli_insert_id($koneksi);
+            }
+
+            // 2. Masukkan data gaji dengan menghubungkan `karyawan_id` + tanggal gajian (tetap tanggal 25)
             $stmt_gaji = mysqli_prepare($koneksi,
-                "INSERT INTO gaji (karyawan_id, periode_id, gaji_pokok, lembur, pinjaman_karyawan)
+                "INSERT INTO gaji (karyawan_id, tanggal_gajian, gaji_pokok, lembur, pinjaman_karyawan)
                  VALUES (?, ?, ?, ?, ?)"
             );
-            mysqli_stmt_bind_param($stmt_gaji, 'iiddd', 
-                $karyawan_id, 
-                $active_periode_id, 
+            mysqli_stmt_bind_param($stmt_gaji, 'isddd',
+                $karyawan_id,
+                $tanggal_gajian,
                 $form['gaji_pokok'],
-                $form['lembur'], 
+                $form['lembur'],
                 $form['pinjaman_karyawan']
             );
-            mysqli_stmt_execute($stmt_gaji);
+            if (!mysqli_stmt_execute($stmt_gaji)) {
+                throw new Exception(mysqli_stmt_error($stmt_gaji));
+            }
 
             mysqli_commit($koneksi);
 
+            // Simpan data langsung tersimpan & langsung muncul (real-time) di Data Gaji
             header('Location: data_gaji.php');
             exit;
         } catch (Exception $e) {
@@ -176,6 +215,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .kotak-readonly {
             background-color: #f5f5f5;
             color: #555;
+        }
+        .rupiah-wrap {
+            flex: 1;
+            display: flex;
+        }
+        .rupiah-prefix {
+            display: flex;
+            align-items: center;
+            padding: 0 10px;
+            border: 1px solid #333;
+            border-right: none;
+            background-color: #eee;
+            font-size: 14px;
+            color: #333;
+        }
+        .kotak-rupiah {
+            border-left: none !important;
         }
         .dua-kolom {
             display: flex;
@@ -293,13 +349,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="slip-container">
         <h2 class="slip-title">SLIP GAJI KARYAWAN</h2>
-        <div class="periode-teks">Periode Aktif: <?= htmlspecialchars($teks_periode_aktif) ?></div>
+        <!-- periode yang tadi diisi di popup, tampil persis di bawah judul -->
+        <div class="periode-teks">Periode: <?= htmlspecialchars($teks_periode_aktif) ?></div>
 
         <?php if ($error): ?>
             <div class="alert-form"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
 
         <form method="POST" action="tambah_gaji.php" autocomplete="off">
+            <input type="hidden" name="bulan" value="<?= htmlspecialchars($bulan_input) ?>">
 
             <div class="field-baca">
                 <label>Nama:</label>
@@ -322,11 +380,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <div class="field-baca">
                         <label>Gaji pokok:</label>
-                        <input type="number" step="0.01" min="0" name="gaji_pokok" id="gaji_pokok" class="kotak" value="<?= htmlspecialchars($form['gaji_pokok']) ?>" required>
+                        <div class="rupiah-wrap">
+                            <span class="rupiah-prefix">Rp</span>
+                            <input type="text" inputmode="numeric" name="gaji_pokok" id="gaji_pokok" class="kotak kotak-rupiah" value="<?= angkaRibuan($form['gaji_pokok']) ?>" required oninput="formatRibuan(this)">
+                        </div>
                     </div>
                     <div class="field-baca">
                         <label>Lembur:</label>
-                        <input type="number" step="0.01" min="0" name="lembur" id="lembur" class="kotak" value="<?= htmlspecialchars($form['lembur']) ?>" required>
+                        <div class="rupiah-wrap">
+                            <span class="rupiah-prefix">Rp</span>
+                            <input type="text" inputmode="numeric" name="lembur" id="lembur" class="kotak kotak-rupiah" value="<?= angkaRibuan($form['lembur']) ?>" required oninput="formatRibuan(this)">
+                        </div>
                     </div>
                     <div class="field-baca">
                         <label>Total penghasilan:</label>
@@ -339,7 +403,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     <div class="field-baca">
                         <label>Pinjaman karyawan:</label>
-                        <input type="number" step="0.01" min="0" name="pinjaman_karyawan" id="pinjaman_karyawan" class="kotak" value="<?= htmlspecialchars($form['pinjaman_karyawan']) ?>" required>
+                        <div class="rupiah-wrap">
+                            <span class="rupiah-prefix">Rp</span>
+                            <input type="text" inputmode="numeric" name="pinjaman_karyawan" id="pinjaman_karyawan" class="kotak kotak-rupiah" value="<?= angkaRibuan($form['pinjaman_karyawan']) ?>" required oninput="formatRibuan(this)">
+                        </div>
                     </div>
                     <div class="field-baca penyangga-hp" style="opacity: 0; pointer-events: none;">
                         <label>-</label>
@@ -378,10 +445,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             return 'Rp ' + Math.round(angka).toLocaleString('id-ID');
         }
 
+        function ambilAngka(id) {
+            return parseFloat(document.getElementById(id).value.replace(/\./g, '')) || 0;
+        }
+
         function hitungPreview() {
-            const gajiPokok = parseFloat(document.getElementById('gaji_pokok').value) || 0;
-            const lembur    = parseFloat(document.getElementById('lembur').value) || 0;
-            const pinjaman  = parseFloat(document.getElementById('pinjaman_karyawan').value) || 0;
+            const gajiPokok = ambilAngka('gaji_pokok');
+            const lembur    = ambilAngka('lembur');
+            const pinjaman  = ambilAngka('pinjaman_karyawan');
 
             const totalPenghasilan = gajiPokok + lembur;
             const totalPotongan    = pinjaman;
@@ -392,9 +463,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             document.getElementById('preview_bersih').value      = formatRupiah(gajiBersih);
         }
 
-        document.getElementById('gaji_pokok').addEventListener('input', hitungPreview);
-        document.getElementById('lembur').addEventListener('input', hitungPreview);
-        document.getElementById('pinjaman_karyawan').addEventListener('input', hitungPreview);
+        // Kasih titik ribuan otomatis sambil ngetik, mis. "2000000" -> "2.000.000"
+        function formatRibuan(el) {
+            const raw = el.value.replace(/\D/g, '');
+            el.value = raw === '' ? '' : raw.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            hitungPreview();
+        }
 
         hitungPreview();
 
