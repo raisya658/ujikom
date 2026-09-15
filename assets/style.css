@@ -1,96 +1,119 @@
-body { /*untuk keseluruhan halaman */
-    font: 1em sans-serif; /*font untuk keseluruhan*/
-    background-color: rgb(191, 192, 195); /*untuk baground utama*/
-    padding: 0%; /*untuk jarak dalam*/
-    margin: 0%; /*untuk jarak luar*/
+/* ============================
+   STYLE UNTUK LOGIN
+   ============================ */
+
+body {
+    font: 1em sans-serif;
+    background-color: rgb(191, 192, 195);
+    padding: 0%;
+    margin: 0%;
 }
 
-form{ /*untuk card*/
-max-width: 300px; /*untuk mengatur lebar card*/
-margin: 100px auto; /*untuk menengahkan card*/
-padding: 20px; /*untuk mengatur jarak yang di dalam*/
-background-color: white; /*untuk mengatur warna baground card*/
-border-radius: 20px; /*untuk mengatur lengkungan sudut*/
+form {
+    max-width: 300px;
+    margin: 100px auto;
+    padding: 20px;
+    background-color: white;
+    border-radius: 20px;
 }
 
-.header { /*untuk header*/
-    text-align: center; /*untuk menengahkan teks*/
-    margin-bottom: 20px; /*untuk jarak di bawah header*/
+.header {
+    text-align: center;
+    margin-bottom: 20px;
 }
 
-.field { /*untuk field input*/
-    margin-bottom: 15px; /*untuk jarak bawah*/
+.field {
+    margin-bottom: 15px;
 }
 
-.field label{ /*untuk mengatur nama di atas input*/
-    display: block; /*untuk menampilkan nama di atas input*/
-    font-size: 15px; /*untuk mengatur ukuran font*/
-    color: black; /*untuk mengatur warna teks*/
-    margin-bottom: 5px; /*untuk jarak bawah*/
+.field label {
+    display: block;
+    font-size: 15px;
+    color: black;
+    margin-bottom: 5px;
 }
 
-.field input{ /*untuk mengatur kotak input*/
-    width: 95%; /*untuk mengatur lebar kotak input*/
-    padding: 8px; /*untuk mengatur jarak di dalam kotak input*/
-    border:2px solid rgb(193, 189, 189); /*untuk mengatur warna border */
-    border-radius: 10px; /*untuk mengatur buletan sudut*/
+.field input {
+    width: 95%;
+    padding: 8px;
+    border: 2px solid rgb(193, 189, 189);
+    border-radius: 10px;
 }
 
-.forgot{ /*untuk tautan lupa password*/
-    font-size: 12px; /*untuk mengatur ukuran font*/
-    text-align: right; /*untuk menengahkan teks*/
-    margin-top: 10px; /*untuk jarak di atas*/
+.forgot {
+    font-size: 12px;
+    text-align: right;
+    margin-top: 10px;
 }
 
-.btn{ /*untuk mengatur button login*/
-    background-color: rgb(110, 108, 217); /*untuk mengatur warna latar belakang button*/
-    color: rgb(243, 241, 241); /*untuk mengatur warna teks button*/
-    padding: 10px 50px; /*untuk mengatur jarak di dalam button*/
-    border: none; /*untuk menghilangkan border*/
-    border-radius: 10px; /*untuk mengatur lengkungan atau buletan sudut*/
-    cursor: pointer; /*untuk mengubah kursor menjadi nunjuk gitu*/
-    display: block; /*untuk menampilkan button */
-    margin: 0px auto; /*untuk menengahkan tombol*/
-    margin-top: 30px; /*untuk mengatur jarak atas*/
+.btn {
+    background-color: rgb(110, 108, 217);
+    color: rgb(243, 241, 241);
+    padding: 10px 50px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    display: block;
+    margin: 0px auto;
+    margin-top: 30px;
 }
-
 
 /* ============================
    STYLE UNTUK SLIP GAJI
    ============================ */
 
-.slip-container { /* kotak putih pembungkus seluruh slip */
-    max-width: 500px;
+.slip-container {
+    max-width: 760px;
+    width: 92%;
     margin: 40px auto;
-    padding: 30px;
+    padding: 36px 48px;
     background-color: white;
     border-radius: 12px;
     box-shadow: 0 0 8px rgba(0,0,0,0.1);
+    box-sizing: border-box;
 }
 
-.slip-title { /* judul SLIP GAJI KARYAWAN */
+/* Tablet: sedikit lebih rapat, tetap lebar */
+@media (max-width: 900px) {
+    .slip-container {
+        width: 94%;
+        padding: 28px 32px;
+    }
+}
+
+/* Mobile: full-width dengan padding nyaman, dua-kolom otomatis jadi satu kolom (lihat .dua-kolom) */
+@media (max-width: 600px) {
+    .slip-container {
+        width: 96%;
+        margin: 16px auto;
+        padding: 20px;
+        border-radius: 10px;
+    }
+}
+
+.slip-title {
     text-align: center;
     margin-bottom: 5px;
 }
 
-.slip-periode { /* teks periode di bawah judul */
+.slip-periode {
     text-align: center;
     color: #555;
     margin-top: 0;
     margin-bottom: 20px;
 }
 
-.field-baca { /* pembungkus tiap baris label + kotak nilai */
+.field-baca {
     margin-bottom: 12px;
 }
 
-.field-baca label { /* nama field, misal "Nama:" */
+.field-baca label {
     display: block;
     font-size: 14px;
     margin-bottom: 4px;
 }
 
-.kotak { /* kotak abu yang menampilkan nilai dari database */
+.kotak {
     width: 92%;
     padding: 8px;
     border: 1px solid #999;
@@ -98,17 +121,26 @@ border-radius: 20px; /*untuk mengatur lengkungan sudut*/
     background-color: #fafafa;
 }
 
-.dua-kolom { /* pembagi 2 kolom: PENGHASILAN kiri, POTONGAN kanan */
+.dua-kolom {
     display: flex;
-    gap: 20px;
+    gap: 24px;
     margin-top: 15px;
 }
 
-.kolom { /* masing-masing kolom (kiri/kanan) */
+.kolom {
     flex: 1;
+    min-width: 0; /* supaya input di dalamnya tidak memaksa kolom melebar keluar */
 }
 
-.kolom-judul { /* header biru "PENGHASILAN" / "POTONGAN" */
+/* di layar sempit, PENGHASILAN & POTONGAN ditumpuk vertikal supaya tidak sempit berdempetan */
+@media (max-width: 600px) {
+    .dua-kolom {
+        flex-direction: column;
+        gap: 15px;
+    }
+}
+
+.kolom-judul {
     background-color: #2b6b85;
     color: white;
     text-align: center;
@@ -118,11 +150,11 @@ border-radius: 20px; /*untuk mengatur lengkungan sudut*/
     font-weight: bold;
 }
 
-.gaji-bersih { /* kotak Gaji Bersih, dikasih jarak lebih supaya menonjol */
+.gaji-bersih {
     margin-top: 20px;
 }
 
-.captcha-box { /* kotak abu berisi soal captcha + tombol refresh */
+.captcha-box {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -132,15 +164,17 @@ border-radius: 20px; /*untuk mengatur lengkungan sudut*/
     margin-top: 20px;
 }
 
-.refresh-btn { /* tombol bulat refresh captcha */
+.refresh-btn {
     background: white;
     border: 1px solid #999;
     border-radius: 6px;
     cursor: pointer;
     padding: 4px 10px;
+    text-decoration: none;
+    color: black;
 }
 
-.captcha-input { /* input untuk jawaban captcha */
+.captcha-input {
     width: 92%;
     padding: 8px;
     margin-top: 10px;
@@ -148,7 +182,7 @@ border-radius: 20px; /*untuk mengatur lengkungan sudut*/
     border-radius: 6px;
 }
 
-.btn-submit { /* tombol submit di bagian paling bawah */
+.btn-submit {
     width: 100%;
     padding: 10px;
     margin-top: 15px;
@@ -160,10 +194,6 @@ border-radius: 20px; /*untuk mengatur lengkungan sudut*/
     cursor: pointer;
 }
 
-/* ============================
-   MODE CETAK (dipakai nanti di Tahap 10)
-   ============================ */
-/* tombol cetak, style normal (tidak dicetak) */
 .btn-cetak {
     width: 100%;
     padding: 10px;
@@ -177,29 +207,164 @@ border-radius: 20px; /*untuk mengatur lengkungan sudut*/
 }
 
 /* ============================
+   POTONGAN (warna merah + tanda minus)
+   ============================ */
+.potongan-merah {
+    color: #c0392b !important;
+    font-weight: bold;
+}
+
+/* ============================
+   MENU BAGIKAN (WhatsApp, Cetak, PDF, Email jadi satu tombol)
+   ============================ */
+.slip-aksi {
+    margin-top: 16px;
+    padding-top: 20px;
+}
+
+.bagikan-wrap {
+    position: relative;
+}
+
+.btn-bagikan {
+    width: 100%;
+    padding: 10px;
+    background-color: #2b6b85;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.bagikan-menu {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    margin-top: 6px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    overflow: hidden;
+    z-index: 10;
+}
+
+.bagikan-menu.tampil {
+    display: block;
+}
+
+.bagikan-menu a {
+    display: block;
+    padding: 10px 14px;
+    color: #333;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.bagikan-menu a:hover {
+    background-color: #f2f5f7;
+}
+
+/* ============================
    MODE CETAK
+   Hanya #area-cetak (slip) yang tercetak, semua elemen lain disembunyikan.
+   Dipakai untuk Cetak maupun "Download PDF" (Simpan sebagai PDF lewat dialog print browser).
+   ============================ */
+/* ============================
+   MODE CETAK (DIPERBAIKI)
    ============================ */
 @media print {
-    /* sembunyikan semua elemen yang TIDAK boleh ikut tercetak */
-    .captcha-box,
-    .captcha-input,
-    .btn-submit,
-    .btn-cetak,
-    #captcha-soal {
+    /* Sembunyikan semua elemen aksi admin & tombol */
+    .no-print, 
+    .slip-aksi, 
+    .bagikan-wrap, 
+    #form-whatsapp-container, 
+    #form-email-container, 
+    .btn-kembali {
         display: none !important;
-        /* !important dipakai supaya aturan ini pasti menang saat mode print,
-           tidak keganggu style lain */
     }
 
-    /* hilangkan bayangan & jarak berlebih supaya kertas hasil print rapi */
-    .slip-container {
-        box-shadow: none;
-        margin: 0;
-        max-width: 100%;
-    }
-
-    /* pastikan warna background tidak ikut boros tinta saat print */
+    /* Hilangkan background luar halaman */
     body {
-        background-color: white;
+        background-color: white !important;
+        margin: 0 !important;
+        padding: 0 !important;
     }
+
+    /* Paksa browser agar mencetak warna background dan warna teks secara akurat */
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+
+    /* Fokuskan hanya pada area cetak slip gaji */
+    #area-cetak {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        box-shadow: none !important;
+        margin: 0 !important;
+        padding: 20px !important;
+        border: none !important;
+    }
+
+    /* Pastikan warna latar belakang judul kolom (Penghasilan & Potongan) tetap biru */
+    .kolom-judul {
+        background-color: #2b6b85 !important;
+        color: white !important;
+    }
+
+    /* Pastikan warna teks potongan tetap merah menyala */
+    .potongan-merah {
+        color: #c0392b !important;
+    }
+}
+
+/* ============================
+   STYLE TAMBAHAN UNTUK FORM
+   (Tambah & Edit Data Gaji)
+   Supaya senada dengan desain slip gaji
+   ============================ */
+
+select.kotak {
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+input.kotak[readonly] {
+    background-color: #eef3f6;
+    font-weight: bold;
+    color: #2b6b85;
+}
+
+.btn-batal {
+    display: block;
+    width: 100%;
+    text-align: center;
+    padding: 10px;
+    margin-top: 10px;
+    background-color: #999;
+    color: white;
+    border-radius: 6px;
+    text-decoration: none;
+}
+
+.form-judul {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.alert-form {
+    background-color: #fdecea;
+    color: #b91c1c;
+    padding: 10px;
+    border-radius: 6px;
+    margin-bottom: 15px;
+    font-size: 14px;
 }

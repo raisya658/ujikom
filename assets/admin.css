@@ -1,0 +1,65 @@
+/* ============================
+   STYLE KHUSUS HALAMAN ADMIN
+   (Data Gaji, Tambah, Edit)
+   Dipakai BERSAMA Bootstrap CDN, jadi cuma override kecil di sini
+   ============================ */
+
+body.admin-page {
+    background-color: #f4f6f8;
+}
+
+.navbar-app {
+    background-color: #2b6b85; /* warna senada dengan header PENGHASILAN/POTONGAN di slip gaji */
+}
+
+.navbar-app .navbar-brand,
+.navbar-app .nav-link {
+    color: white !important;
+}
+
+.stat-card {
+    border-left: 4px solid #2b6b85;
+}
+
+.stat-card .stat-value {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.table-responsive-wrapper {
+    background: white;
+    border-radius: 8px;
+    padding: 15px;
+    box-shadow: 0 0 6px rgba(0,0,0,0.08);
+}
+
+.badge-belum {
+    background-color: #e0a800;
+}
+
+.badge-sudah {
+    background-color: #2b8a3e;
+}
+
+/* ============================
+   TOMBOL AKSI TITIK TIGA (menggantikan Detail | Edit | Hapus berjajar)
+   ============================ */
+.btn-aksi {
+    background: transparent;
+    border: none;
+    font-size: 1.3rem;
+    line-height: 1;
+    padding: 2px 10px;
+    color: #444;
+    border-radius: 6px;
+}
+
+.btn-aksi:hover,
+.btn-aksi:focus {
+    background-color: #eef1f3;
+    color: #222;
+}
+
+.dropdown-item.text-danger:hover {
+    background-color: #fdecea;
+}
