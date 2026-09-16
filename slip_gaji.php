@@ -261,8 +261,7 @@ $email_default   = htmlspecialchars($data['email'] ?? '');
             <div class="kotak"><strong><?= rupiah($gaji_bersih) ?></strong></div>
         </div>
 
-        <p class="slip-footer-cetak">Dicetak dari Aplikasi Penggajian</p>
-    </div>
+            </div>
     <!-- ===================== akhir area-cetak ===================== -->
 
     <script>

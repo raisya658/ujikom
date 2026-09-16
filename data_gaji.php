@@ -88,6 +88,137 @@ $paksa_buka_popup = isset($_GET['pilih']);
             font-weight: bold;
             margin-top: 6px;
         }
+
+        /* =====================================================
+           TAMPILAN RESPONSIVE UNTUK LAYAR KECIL (HP)
+           Tabel diubah jadi tumpukan kartu, bukan tabel sempit
+           yang di-scroll ke samping.
+           ===================================================== */
+        @media (max-width: 767.98px) {
+            .table-container-card {
+                padding: 0;
+                background: transparent;
+                box-shadow: none;
+            }
+            .table-responsive {
+                overflow: visible;
+            }
+
+            table.table-gaji thead {
+                display: none; /* header tabel disembunyikan, diganti label di tiap kartu */
+            }
+            table.table-gaji, 
+            table.table-gaji tbody, 
+            table.table-gaji tr, 
+            table.table-gaji td {
+                display: block;
+                width: 100%;
+            }
+
+            table.table-gaji tr.baris-gaji {
+                position: relative;
+                background: #ffffff;
+                border-radius: 12px;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+                padding: 14px 16px;
+                margin-bottom: 12px;
+            }
+            table.table-gaji tr.baris-gaji:hover {
+                background: #ffffff; /* matikan efek hover bawaan table-hover di mobile */
+            }
+            table.table-gaji td {
+                border: none !important;
+                padding: 0 !important;
+            }
+
+            /* Sembunyikan nomor urut, tidak relevan di tampilan kartu */
+            table.table-gaji td[data-label="No"] {
+                display: none;
+            }
+
+            /* Tombol aksi (titik tiga) ditaruh di pojok kanan atas kartu */
+            table.table-gaji td[data-label="Aksi"] {
+                position: absolute;
+                top: 10px;
+                right: 8px;
+                width: auto;
+            }
+
+            /* Nama karyawan jadi judul kartu */
+            table.table-gaji td[data-label="Nama Karyawan"] {
+                order: 1;
+                font-size: 1.05rem;
+                font-weight: 700;
+                color: #1c1c1c;
+                padding-right: 34px !important;
+                margin-bottom: 6px;
+            }
+
+            /* Jabatan tampil sebagai badge kecil */
+            table.table-gaji td[data-label="Jabatan"] {
+                order: 2;
+                margin-bottom: 10px;
+                font-size: 0; /* sembunyikan teks asli, diganti badge lewat ::before */
+            }
+            table.table-gaji td[data-label="Jabatan"]::before {
+                content: attr(data-value);
+                display: inline-block;
+                background: #eaf2f6;
+                color: #2b6b85;
+                font-size: 0.72rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
+                padding: 3px 10px;
+                border-radius: 20px;
+            }
+
+            /* Periode gaji tampil sebagai teks kecil abu-abu dengan ikon kalender */
+            table.table-gaji td[data-label="Periode Gaji"] {
+                order: 3;
+                font-size: 0.85rem;
+                color: #667085;
+                margin-bottom: 10px;
+            }
+            table.table-gaji td[data-label="Periode Gaji"]::before {
+                content: "📅 ";
+            }
+
+            /* Gaji bersih jadi bagian paling menonjol, dipisah garis tipis */
+            table.table-gaji td[data-label="Gaji Bersih"] {
+                order: 4;
+                padding-top: 10px !important;
+                border-top: 1px dashed #e3e6ea !important;
+            }
+            table.table-gaji td[data-label="Gaji Bersih"]::before {
+                content: "Gaji Bersih";
+                display: block;
+                font-size: 0.72rem;
+                font-weight: 600;
+                color: #9aa2ab;
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
+                margin-bottom: 2px;
+            }
+            table.table-gaji td[data-label="Gaji Bersih"] strong {
+                font-size: 1.15rem;
+                color: #195b8c;
+            }
+
+            /* Susun ulang urutan visual pakai flex, karena td tidak bisa dipindah posisi DOM-nya */
+            table.table-gaji tr.baris-gaji {
+                display: flex;
+                flex-direction: column;
+            }
+
+            /* Kartu "Belum ada data gaji" tidak perlu ikut gaya kartu di atas */
+            table.table-gaji tr.baris-kosong {
+                background: #ffffff;
+                border-radius: 12px;
+                box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+                padding: 30px 16px;
+            }
+        }
     </style>
 </head>
 <body class="admin-page">
@@ -148,7 +279,7 @@ $paksa_buka_popup = isset($_GET['pilih']);
         <!-- TABEL DATA GAJI -->
         <div class="table-container-card">
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
+                <table class="table table-gaji table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
                             <th style="width: 60px;">No</th>
@@ -171,13 +302,13 @@ $paksa_buka_popup = isset($_GET['pilih']);
 
                             $periode_teks = teksPeriodeGajian($row['tanggal_gajian']);
                         ?>
-                        <tr>
-                            <td><?= $no++ ?></td>
-                            <td><?= htmlspecialchars($row['nama']) ?></td>
-                            <td><?= htmlspecialchars($row['jabatan']) ?></td>
-                            <td><?= htmlspecialchars($periode_teks) ?></td>
-                            <td><strong><?= rupiah($gaji_bersih) ?></strong></td>
-                            <td class="text-center">
+                        <tr class="baris-gaji">
+                            <td data-label="No"><?= $no++ ?></td>
+                            <td data-label="Nama Karyawan"><?= htmlspecialchars($row['nama']) ?></td>
+                            <td data-label="Jabatan" data-value="<?= htmlspecialchars($row['jabatan']) ?>"><?= htmlspecialchars($row['jabatan']) ?></td>
+                            <td data-label="Periode Gaji"><?= htmlspecialchars($periode_teks) ?></td>
+                            <td data-label="Gaji Bersih"><strong><?= rupiah($gaji_bersih) ?></strong></td>
+                            <td data-label="Aksi" class="text-center">
                                 <div class="dropdown">
                                     <button class="btn btn-aksi btn-sm" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                                         &#8942;
@@ -199,7 +330,7 @@ $paksa_buka_popup = isset($_GET['pilih']);
                         <?php endwhile; ?>
 
                         <?php if (!$ada_data): ?>
-                        <tr>
+                        <tr class="baris-kosong">
                             <td colspan="6" class="text-center text-muted py-5">Belum ada data gaji.</td>
                         </tr>
                         <?php endif; ?>
